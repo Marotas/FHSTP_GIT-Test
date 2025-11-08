@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Schmerztagebuch</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h2>Schmerztagebuch</h2>
+    <form id="painForm">
+        Datum: <input type="date" id="date" required>
+        Intensität (NRS): <input type="number" id="intensity" min="0" max="10" required>
+        Lokalisation: <input type="text" id="location" required>
+        <button type="submit">Eintrag speichern</button>
+    </form>
+
+    <h3>Einträge</h3>
+    <table id="painTable">
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Intensität</th>
+                <th>Lokalisation</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h3>Schmerzverlauf</h3>
+    <canvas id="painChart" width="600" height="300"></canvas>
+    <br>
+    <button id="downloadBtn">Kurve herunterladen</button>
+    <button id="downloadCsvBtn">Tabelle als CSV herunterladen</button>
+    <input type="file" id="csvUpload" accept=".csv">
+    <label for="csvUpload">CSV hochladen</label>
+    <p id="mostAffected"></p>
+
+    <script>
+        const entries = [];
+        const form = document.getElementById('painForm');
+        const tableBody = document.querySelector('#painTable tbody');
+        const mostAffected = document.getElementById('mostAffected');
+        const ctx = document.getElementById('painChart').getContext('2d');
+        let chart;
+
+        function updateTable() {
+            tableBody.innerHTML = '';
+            entries.forEach(e => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${e.date}</td><td>${e.intensity}</td><td>${e.location}</td>`;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function updateChart() {
+            const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+            const labels = sorted.map(e => e.date);
+            const data = sorted.map(e => e.intensity);
+
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Intensität',
+                        data: data,
+                        borderColor: 'red',
+                        fill: false,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: { title: { display: true, text: 'Tage' } },
+                        y: { title: { display: true, text: 'Intensität' }, min: 0, max: 10 }
+                    }
+                }
+            });
+        }
+
+        function updateMostAffected() {
+            if (entries.length === 0) {
+                mostAffected.textContent = '';
+                return;
+            }
+            const freq = {};
+            entries.forEach(e => {
+                freq[e.location] = (freq[e.location] || 0) + 1;
+            });
+            const max = Math.max(...Object.values(freq));
+            const region = Object.keys(freq).find(loc => freq[loc] === max);
+            mostAffected.textContent = `Am meisten betroffen: ${region}`;
+        }
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            const date = document.getElementById('date').value;
+            const intensity = parseInt(document.getElementById('intensity').value, 10);
+            const location = document.getElementById('location').value;
+            entries.push({ date, intensity, location });
+            updateTable();
+            updateChart();
+            updateMostAffected();
+            form.reset();
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.href = chart.toBase64Image();
+            link.download = 'schmerzverlauf.png';
+            link.click();
+        });
+
+        document.getElementById('downloadCsvBtn').addEventListener('click', () => {
+            if (entries.length === 0) return;
+            const header = ['Datum', 'Intensität', 'Lokalisation'];
+            const rows = entries.map(e => [e.date, e.intensity, e.location]);
+            let csvContent = header.join(';') + '\n' + rows.map(r => r.join(';')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'schmerztabelle.csv';
+            link.click();
+        });
+
+        document.getElementById('csvUpload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.trim().split('\n');
+                // Annahme: Erste Zeile ist Header
+                for (let i = 1; i < lines.length; i++) {
+                    const [date, intensity, location] = lines[i].split(';');
+                    if (date && intensity && location) {
+                        entries.push({
+                            date: date.trim(),
+                            intensity: parseInt(intensity.trim(), 10),
+                            location: location.trim()
+                        });
+                    }
+                }
+                updateTable();
+                updateChart();
+                updateMostAffected();
+            };
+            reader.readAsText(file, 'UTF-8');
+        });
+    </script>
+</body>
+</html>
