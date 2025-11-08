@@ -1,0 +1,11 @@
+Schmerztagebuch:
+
+Input: NRS SChmerzintensität, Datum, Lokalisation
+
+zwischenspeichern in tabelle
+
+Output:
+
+erstellen einer verlaufskurve mit x-Achse Tage und y-Tage Intensität, und Output der am meisten betroffenen Schmerzregion
+
+download der kurve via Button
