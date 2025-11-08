@@ -31,13 +31,14 @@
     </table>
 
     <h3>Schmerzverlauf</h3>
+     <p id="mostAffected"></p>
     <canvas id="painChart" width="600" height="300"></canvas>
     <br>
     <button id="downloadBtn">Kurve herunterladen</button>
     <button id="downloadCsvBtn">Tabelle als CSV herunterladen</button>
     <input type="file" id="csvUpload" accept=".csv">
     <label for="csvUpload">CSV hochladen</label>
-    <p id="mostAffected"></p>
+   
 
     <script>
         const entries = [];
